@@ -1,0 +1,300 @@
+---
+title: "ibs3_assign9"
+output: html_document
+
+BWT - Burrow Wheeler Transform 
+---
+
+```{r}
+#given sequence
+seq='AGCAGCCCAC'
+#seq='banana'
+#rotate sequence clockwise
+rotate_seq<-function(seqnce){
+  rot_seq <- vector(mode = "list")
+  #number of charcters in string
+N=nchar(seqnce)
+s=seqnce
+for (i in 1:N){
+  #placing 1st character at the end of the string
+  s=paste(substr(s,2,N),substr(s,1,1),sep='')
+    rot_seq[i]=s
+}
+  return(rot_seq)
+}
+```
+
+```{r}
+ans<-rotate_seq(seq)
+  ans
+```
+
+
+
+```{r}
+library(plyr)
+library(stringi)
+bub_sort <- function(sequence){
+  for (i in 1:(length(sequence)-1)){
+    for (j in 1:(length(sequence)-i)){
+      if (stri_cmp(sequence[j], sequence[j+1]) > 0){    # Check whether 2 strings appear in Lexicographic Order 
+        temp <- sequence[j]                             # Swapping of adjacent sequences if they don't appear 
+        sequence[j] <- sequence[j+1]                    # in lexicographic order
+        sequence[j+1] <- temp
+      }
+    }
+  }
+  sequence<- plyr::compact(sequence)
+  return(sequence)
+}
+```
+
+
+```{r}
+lex_seq=bub_sort(ans)
+lex_seq
+```
+```{r}
+# Returns all possible rotations of a given string
+permutation_string<-function(LexSeq){
+  st=''
+  for (i in 1:length(LexSeq)){
+    #getting last column from rotated seq list
+    st=paste(st,substring(LexSeq[i],nchar(LexSeq[i]),nchar(LexSeq[i])),sep='')
+  }
+  return(st)
+}
+```
+
+```{r}
+#finding the position of original seq from the rotated seq list 
+string_match <- function(seq_list,seqn){
+  for(i in 1:length(seq_list)){
+    k = stri_cmp(seq_list[i],seqn)      # When the given string matches a 
+    if(k==0){                           # particular index of the given BWT matrix
+      strNum = i
+    }
+    
+  }
+  return(strNum)                        # Return the index
+}
+```
+
+```{r}
+str_num=string_match(lex_seq,seq)
+str_num
+```
+
+
+
+```{r}
+pt_str=permutation_string(lex_seq)
+pt_str
+```
+```{r}
+library(tictoc)
+#appending permutation string 'n' times and sorting it in #lexicographic order every time you append the string 
+# n-> length of given string 
+BWT_mtrx<-function(Pmtstr,apnd_seq){
+  tic("BWT")
+  N=nchar(Pmtstr)
+  #apnd_seq <- vector(mode = "list")
+  for(i in 1:N){
+    ss=substr(Pmtstr,i,i)
+    apnd_seq[i]=paste(ss,apnd_seq[i],sep='')
+    
+  }
+  #apnd_seq<-bub_sort(apnd_seq)
+  toc()
+  return(apnd_seq)
+  
+}
+```
+
+```{r}
+fin<-BWT_mtrx(pt_str,c())
+fin1<-BWT_mtrx(pt_str,bub_sort(fin))
+fin2<-BWT_mtrx(pt_str,bub_sort(fin1))
+fin3<-BWT_mtrx(pt_str,bub_sort(fin2))
+fin4<-BWT_mtrx(pt_str,bub_sort(fin3))
+fin2
+```
+```{r}
+#decoding the original seq from BWT matrix
+inv_BWT<-function(bub_str,str_num){
+  tic("IBWT")
+  fin<-BWT_mtrx(bub_str,c())
+  for (i in 1:(nchar(bub_str)-1)){
+    fin<-BWT_mtrx(bub_str,bub_sort(fin))
+  }
+  #to remove NA into consideration while sorting
+  fin<-bub_sort(substr(fin,1,nchar(bub_str)))
+  toc()
+ return(fin[str_num])
+ 
+  }
+```
+
+```{r}
+fin_str<-inv_BWT(pt_str,str_num)
+fin_str
+```
+
+
+```{r}
+suffix_array <- function (sqnce){
+  cln_sq = sqnce
+   N = nchar(cln_sq)
+   sufx_arr = vector(mode = "list")
+   S = vector(mode = "list")
+   for(i in 1:N){
+     sufx_arr[i] = substr(cln_sq,i,nchar(cln_sq))
+   }
+   sorted_sufx_arr = bub_sort(sufx_arr)
+   for(k in 1:length(sufx_arr)){
+        tmp = sorted_sufx_arr[k]
+        S[k]=string_match(sufx_arr,tmp)
+    }
+   
+    return(S)
+  
+}
+```
+
+```{r}
+a = suffix_array('BANANA1')
+a
+```
+
+```{r}
+library(Matrix,'source')
+count_arr <- function(last_col){
+  unq = vector(mode = "list")
+  cnt = 0
+  unq = unique(last_col)
+  unq = bub_sort(unq)
+  cnt_arr = matrix(nrow=length(last_col)+1,ncol=length(unq))
+  #cnt_arr[is.na(cnt_arr)] = 0
+  cnt_arr <- replace(cnt_arr, is.na(cnt_arr), 0)
+  for(j in 1 : length(unq)){
+    for(i in 2 : dim(cnt_arr)[1]) {
+      if(identical(unq[j],last_col[i-1])){
+        cnt_arr[i,j]=cnt+1
+        cnt = cnt+1
+       
+      }
+      else{
+        cnt_arr[i,j]=cnt
+      }
+    }
+    cnt = 0
+    
+  }
+  return(cnt_arr)
+}
+```
+
+
+
+
+```{r}
+lc = c('A','N','N','1','B','A','A')
+count_arr(lc)
+```
+
+
+```{r}
+offset <-function(Lc){
+  O = vector(mode = "list")
+  st = bub_sort(Lc)
+  for(i in 1:length(st)){
+    n =  match(st[i],st)
+    O[i] = n
+  }
+  ofst = unique(O)
+return(ofst)
+  }
+```
+
+```{r}
+lc = c('A','N','N','1','B','A','A')
+offset(lc)
+```
+
+
+
+```{r}
+ExactMatch <- function(p,last_col){
+  Fr = count_arr(last_col)
+  O = offset(last_col)
+  lo <- 1
+  hi = dim(Fr)[1]-1
+  idx = bub_sort(unique(last_col))
+  q1 <- strsplit(p, NULL)[[1]]
+  qr <- rev(q1)
+  q = paste(qr, collapse='')
+  for(i in 1:length(qr)){
+    id = match(qr[i],idx)
+    lo = as.numeric(O[id]) + as.numeric(Fr[lo,id])
+    hi = as.numeric(O[id]) + as.numeric(Fr[hi,id])
+  }
+  
+  return(c(lo,hi))
+}
+```
+
+```{r}
+ExactMatch('NA',c('A','N','N','1','B','A','A'))
+```
+```{r}
+comp <- function(str) {
+  c_str = ""
+  i = 1
+  while (i <= nchar(str)) {
+    count = 1
+    ch = substr(str, i, i)
+    j = i
+    while (j < nchar(str)) {
+      if (substr(str, j, j) == substr(str, j + 1, j + 1)){
+        count = count + 1
+        j = j + 1
+      }
+      else{
+        break
+      }
+    }
+    c_str = paste(c_str, ch, count, sep = "")
+    i = j + 1
+  }
+  return (c_str)
+}
+```
+
+```{r}
+comp("aaabbccdde")
+```
+
+
+```{r}
+# Decompression
+decomp <- function(c){
+dcomp = ""
+s = ""
+for (i in 1: nchar(c)){
+  if (stri_cmp(substr(c, i, i),substr(c, i + 1, i + 1)) == -1){
+    n = as.numeric(substr(c, i , i ))
+    for (j in 1:n) {
+      s = paste(s, substr(c, i+1, i+1),sep='')
+    }
+  
+    }
+  
+}
+dcomp = paste(dcomp, s)
+return(dcomp)
+}
+```
+
+```{r}
+decomp("1a2b3c")
+```
